@@ -2,7 +2,7 @@
 
 Turn on a PC from anywhere with one tap on an iPhone, using a cheap ESP32 sitting on the home network.
 
-![ESP32 in its 3D-printed case](docs/case.jpg) <!-- add photo -->
+![ESP32 in its 3D-printed case](docs/case.jpg)
 
 ```
 iPhone (Shortcuts) --HTTP POST--> Adafruit IO <--MQTT/TLS-- ESP32 --magic packet--> PC
