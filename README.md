@@ -16,6 +16,7 @@ iPhone (Shortcuts) --HTTP POST--> Adafruit IO <--MQTT/TLS-- ESP32 --magic packet
 - The ESP32 also pings the PC and publishes `online` / `offline` to a second feed, so the Shortcut can confirm the PC is up.
 - Everything is outbound from the house: it works behind CGNAT and needs no port forwarding.
 - The board's BOOT button sends the magic packet too, which is useful to test the local part on its own.
+- A watchdog reboots the board if the main loop hangs for 30 s.
 
 ## Hardware
 
@@ -30,7 +31,7 @@ iPhone (Shortcuts) --HTTP POST--> Adafruit IO <--MQTT/TLS-- ESP32 --magic packet
 2. **Create the Adafruit IO feeds** `pc-command` and `pc-status` (free plan is enough).
 3. **Configure the firmware**: copy `firmware/esp32-wake-on-lan/secrets.example.h` to `secrets.h` and fill it in.
 4. **Install the libraries** in the Arduino IDE: *Adafruit MQTT Library* and *ESP32Ping*.
-5. **Flash** with the board set to *ESP32 Dev Module*.
+5. **Flash** with the board set to *ESP32 Dev Module*. The first flash is over USB; after that the board shows up as the network port `esp32-wol` in *Tools → Port* and you can upload over Wi-Fi (same network, password = `OTA_PASSWORD`).
 6. **Create the iPhone Shortcut**: see [docs/ios-shortcut.md](docs/ios-shortcut.md).
 
 Test in this order: BOOT button wakes the PC → command from the Adafruit IO dashboard wakes the PC → Shortcut wakes the PC.
@@ -44,8 +45,8 @@ Test in this order: BOOT button wakes the PC → command from the Adafruit IO da
 ## Roadmap
 
 - [ ] Shut the PC down from the phone (small agent on the PC listening to the same feed)
-- [ ] OTA firmware updates
-- [ ] Watchdog
+- [x] OTA firmware updates (local network)
+- [x] Watchdog
 
 ## License
 
