@@ -18,6 +18,8 @@
 #include <WiFiUdp.h>
 #include <WiFiClientSecure.h>
 #include <ESP32Ping.h>
+#include <ArduinoOTA.h>
+#include <esp_task_wdt.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 
@@ -39,6 +41,10 @@ const unsigned long PING_INTERVAL_MS      = 15000;   // check the PC every 15 s
 const unsigned long HEARTBEAT_INTERVAL_MS = 300000;  // re-publish status every 5 min
 const unsigned long KEEPALIVE_INTERVAL_MS = 60000;   // ping the broker every minute
 const int           MQTT_MAX_RETRIES      = 5;
+const uint32_t      WATCHDOG_TIMEOUT_MS   = 30000;   // reboot if loop() hangs this long
+
+// ---------- OTA ----------
+const char* OTA_HOSTNAME = "esp32-wol";  // shows up as a network port in the Arduino IDE
 
 // ---------- MQTT ----------
 WiFiUDP udp;
@@ -90,6 +96,7 @@ void connectWiFi() {
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));  // blink while connecting
     delay(250);
     Serial.print(".");
+    esp_task_wdt_reset();
   }
 
   digitalWrite(LED_PIN, HIGH);  // solid = connected
@@ -106,6 +113,7 @@ void connectMQTT() {
     Serial.println(mqtt.connectErrorString(result));
     mqtt.disconnect();
     delay(5000);
+    esp_task_wdt_reset();
     if (--retriesLeft == 0) ESP.restart();  // still failing: start over
   }
 
@@ -159,18 +167,45 @@ void keepBrokerAlive() {
   if (!mqtt.ping()) mqtt.disconnect();
 }
 
+// ---------- OTA and watchdog ----------
+void setupWatchdog() {
+  // The core already starts the task watchdog; widen it and watch loop() too.
+  esp_task_wdt_config_t config = {
+    .timeout_ms = WATCHDOG_TIMEOUT_MS,
+    .idle_core_mask = 0,
+    .trigger_panic = true,  // panic = reboot
+  };
+  esp_task_wdt_reconfigure(&config);
+  esp_task_wdt_add(NULL);
+}
+
+void setupOTA() {
+  ArduinoOTA.setHostname(OTA_HOSTNAME);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+  ArduinoOTA.onStart([]() { Serial.println("OTA update started"); });
+  ArduinoOTA.onProgress([](unsigned int, unsigned int) { esp_task_wdt_reset(); });  // upload blocks loop()
+  ArduinoOTA.onEnd([]() { Serial.println("OTA update done, rebooting"); });
+  ArduinoOTA.onError([](ota_error_t error) { Serial.printf("OTA error %u\n", error); });
+  ArduinoOTA.begin();
+}
+
 // ---------- Main ----------
 void setup() {
   Serial.begin(115200);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
+  setupWatchdog();
   connectWiFi();
+  setupOTA();
   tls.setCACert(ADAFRUIT_IO_ROOT_CA);  // verify io.adafruit.com's certificate
   mqtt.subscribe(&commandFeed);
 }
 
 void loop() {
+  esp_task_wdt_reset();
+  ArduinoOTA.handle();
+
   if (WiFi.status() != WL_CONNECTED) connectWiFi();
   connectMQTT();
 

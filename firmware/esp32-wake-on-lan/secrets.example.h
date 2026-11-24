@@ -19,6 +19,10 @@
 // Value sent to the command feed that wakes the PC (compared in lowercase)
 #define WAKE_COMMAND "wake"
 
+// ---------- OTA updates ----------
+// Asked by the Arduino IDE when uploading over the network
+#define OTA_PASSWORD "choose-a-password"
+
 // ---------- Target PC ----------
 // MAC address of the PC's wired network card (ipconfig /all -> "Physical Address")
 #define PC_MAC_ADDRESS {0x00, 0x11, 0x22, 0x33, 0x44, 0x55}
